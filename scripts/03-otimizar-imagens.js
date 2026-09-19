@@ -13,6 +13,10 @@ const ok = (m) => console.log('  OK   ' + m);
 const aviso = (m) => console.log('  !    ' + m);
 const erro = (m) => console.log('  X    ' + m);
 
+// Pouca RAM: 1 imagem por vez, cache do sharp pequeno
+sharp.concurrency(1);
+sharp.cache({ memory: 32, files: 0, items: 32 });
+
 function hashArquivo(caminho) {
   const stat = fs.statSync(caminho);
   const str = caminho + '|' + stat.size + '|' + stat.mtimeMs;
@@ -38,7 +42,7 @@ function acharArquivoOriginal(codigo) {
 }
 
 console.log('');
-console.log('SHOCK CATALOGO - Otimizar imagens (WebP 600px)');
+console.log('SHOCK CATALOGO - Otimizar imagens (WebP ' + config.imagens.larguraMax + 'px)');
 console.log('===============================================');
 console.log('');
 console.log('  Inicio: ' + new Date().toLocaleString('pt-BR'));
@@ -53,10 +57,14 @@ const db = new Database(caminhoBanco);
 ok('Banco: ' + config.banco);
 
 titulo('Lendo produtos com foto');
-const produtos = db.prepare(
-  "SELECT codigo, imagem FROM produtos WHERE imagem IS NOT NULL ORDER BY codigo"
-).all();
-ok('Produtos com foto: ' + produtos.length);
+// Produto inativo nao aparece no site: nao gasta tempo nem espaco com a foto dele
+let sql = 'SELECT codigo, imagem FROM produtos WHERE imagem IS NOT NULL';
+if (config.catalogo.apenasAtivos) sql += ' AND ativo = 1';
+sql += ' ORDER BY codigo';
+const produtos = db.prepare(sql).all();
+ok('Produtos com foto' + (config.catalogo.apenasAtivos ? ' (so ativos)' : '') + ': ' + produtos.length);
+
+const tiraFoto = db.prepare('UPDATE produtos SET imagem = NULL WHERE codigo = ?');
 
 titulo('Preparando pasta destino');
 const pastaDestino = path.join(ROOT, config.imagens.destino);
@@ -66,6 +74,8 @@ ok('Destino: ' + config.imagens.destino);
 titulo('Otimizando');
 console.log('');
 
+const formato = config.imagens.formato;
+const mantidos = new Set(); // arquivos de saida que devem continuar existindo
 let processadas = 0;
 let puladas = 0;
 let falhas = 0;
@@ -78,10 +88,11 @@ for (const produto of produtos) {
   if (!original) {
     aviso('Original nao encontrada: ' + codigo);
     falhas++;
+    tiraFoto.run(codigo);
     continue;
   }
 
-  const nomeSaida = codigo + '.' + config.imagens.formato;
+  const nomeSaida = codigo + '.' + formato;
   const caminhoSaida = path.join(pastaDestino, nomeSaida);
 
   // Cache: se ja existe e o original nao mudou, pula
@@ -91,21 +102,29 @@ for (const produto of produtos) {
     const hashAntigo = fs.readFileSync(hashFile, 'utf8').trim();
     if (hashAntigo === hashAtual) {
       puladas++;
+      mantidos.add(nomeSaida);
       continue;
     }
   }
 
+  // Grava em arquivo temporario e renomeia: nunca deixa WebP pela metade
+  const temporario = path.join(pastaDestino, codigo + '.tmp.' + formato);
   try {
     await sharp(original)
+      .rotate() // respeita a orientacao EXIF da foto
       .resize({ width: config.imagens.larguraMax, withoutEnlargement: true })
-      .toFormat(config.imagens.formato, { quality: config.imagens.qualidade })
-      .toFile(caminhoSaida);
+      .toFormat(formato, { quality: config.imagens.qualidade })
+      .toFile(temporario);
+    fs.renameSync(temporario, caminhoSaida);
 
     fs.writeFileSync(hashFile, hashAtual);
     processadas++;
+    mantidos.add(nomeSaida);
   } catch (e) {
     aviso('Falha em ' + codigo + ': ' + e.message);
     falhas++;
+    fs.rmSync(temporario, { force: true });
+    tiraFoto.run(codigo); // sem WebP valido, o produto fica sem foto ate a proxima rodada
   }
 
   // Progresso a cada 25 fotos ou 10s
@@ -118,6 +137,30 @@ for (const produto of produtos) {
     console.log('  [' + feitas + '/' + total + '] ' + pct + '% | ok ' + processadas + ' | puladas ' + puladas + ' | falhas ' + falhas + ' | ' + decorrido + 's');
     ultimoPrint = agora;
   }
+}
+
+// Falha em massa (ex.: sharp quebrado): aborta ANTES de limpar qualquer coisa
+if (produtos.length >= 10 && falhas >= produtos.length * 0.3) {
+  erro('Falhas em massa (' + falhas + ' de ' + produtos.length + '). Nada foi removido. Confira o sharp e a pasta de fotos.');
+  db.close();
+  process.exit(1);
+}
+
+titulo('Limpando WebP que nao sao mais usados');
+if (produtos.length === 0) {
+  aviso('Nenhum produto com foto: nada removido (protecao)');
+} else {
+  let removidos = 0;
+  for (const nome of fs.readdirSync(pastaDestino)) {
+    const ehHash = nome.endsWith('.hash');
+    const ehImagem = nome.endsWith('.' + formato);
+    if (!ehHash && !ehImagem) continue; // so mexe no que este script gera
+    const nomeImagem = ehHash ? nome.slice(0, -'.hash'.length) : nome;
+    if (mantidos.has(nomeImagem)) continue;
+    fs.rmSync(path.join(pastaDestino, nome), { force: true });
+    if (ehImagem) removidos++;
+  }
+  ok('WebP removidos (inativos, sem foto ou renomeados): ' + removidos);
 }
 
 console.log('');

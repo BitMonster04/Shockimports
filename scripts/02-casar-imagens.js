@@ -93,8 +93,8 @@ for (const nomeArquivo of fotos) {
     // Ja existe: escolhe o "melhor"
     // Regra: se um tem sufixo "(n)" e o outro nao, fica o sem sufixo
     const temSufixoExistente = /\(\d+\)\s*\./i.test(existente);
-    const temSufixоАtual = /\(\d+\)\s*\./i.test(nomeArquivo);
-    if (temSufixoExistente && !temSufixоАtual) {
+    const temSufixoAtual = /\(\d+\)\s*\./i.test(nomeArquivo);
+    if (temSufixoExistente && !temSufixoAtual) {
       mapaFotos.set(codigo, nomeArquivo);
     }
     // senao, mantem o primeiro (ja existente)
@@ -117,9 +117,8 @@ const transacao = db.transaction(() => {
     if (arquivo) {
       // Guarda caminho relativo. O script 03 vai gerar a versao otimizada
       // e a extensao final sera .webp
-      const base = path.basename(arquivo, path.extname(arquivo));
-      const codigoLimpo = base.replace(/\s*\(\d+\)\s*$/, '').trim();
-      const caminhoRelativo = 'img/produtos/' + codigoLimpo + '.webp';
+      // Mesmo nome que o script 03 grava (codigo do banco, sempre maiusculo)
+      const caminhoRelativo = 'img/produtos/' + produto.codigo + '.webp';
       updateFoto.run({ imagem: caminhoRelativo, codigo: produto.codigo });
       codigosCasaram.add(codigo);
       comFoto++;

@@ -25,9 +25,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
 
       - name: Instalar dependencias
         run: npm install
+
+      - name: Gerar PDFs
+        run: node scripts/05-gerar-pdfs.js
 
       - name: Build do Astro
         run: npx astro build

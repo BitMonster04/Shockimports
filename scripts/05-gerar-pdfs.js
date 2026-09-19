@@ -1,6 +1,5 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import Database from 'better-sqlite3';
 import PDFDocument from 'pdfkit';
 import sharp from 'sharp';
 import config from '../config.js';
@@ -44,7 +43,8 @@ async function carregarImagemComoJpeg(caminhoWebp) {
   }
   try {
     const buf = await sharp(caminhoWebp)
-      .jpeg({ quality: 75 })
+      .resize({ width: config.pdf.larguraImagem, withoutEnlargement: true })
+      .jpeg({ quality: config.pdf.qualidade })
       .toBuffer();
     cacheImagens.set(caminhoWebp, buf);
     return buf;
@@ -60,7 +60,7 @@ function fmtPreco(v) {
 }
 
 function dataBR() {
-  return new Date().toLocaleDateString('pt-BR');
+  return new Date().toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
 function desenharCard(doc, produto, imgBuffer, x, y, largura, altura) {
@@ -84,6 +84,9 @@ function desenharCard(doc, produto, imgBuffer, x, y, largura, altura) {
         valign: 'center',
       });
     } catch (e) {}
+  } else {
+    doc.fontSize(8).fillColor(COR_CINZA_MEDIO).font('Helvetica')
+       .text('Foto em breve', imgX, imgY + imgH / 2 - 4, { width: imgW, align: 'center' });
   }
 
   let infoY = imgY + imgH + 6;
@@ -183,21 +186,25 @@ console.log('');
 console.log('SHOCK CATALOGO - Gerar PDFs');
 console.log('============================');
 
-titulo('Abrindo banco');
-const caminhoBanco = path.join(ROOT, config.banco);
-if (!fs.existsSync(caminhoBanco)) {
-  erro('Banco nao existe. Rode: npm run importar && npm run casar');
+titulo('Lendo o JSON do catalogo');
+const caminhoJson = path.join(ROOT, config.jsonSaida);
+if (!fs.existsSync(caminhoJson)) {
+  erro('JSON nao existe: ' + config.jsonSaida + '. Rode: npm run json');
   process.exit(1);
 }
-const db = new Database(caminhoBanco);
-ok('Banco: ' + config.banco);
+const dadosCatalogo = JSON.parse(fs.readFileSync(caminhoJson, 'utf8'));
+ok('JSON: ' + config.jsonSaida);
 
-titulo('Lendo produtos com foto');
-const produtos = db.prepare(
-  'SELECT codigo, nome, categoria, preco, qtde_caixa, ean, imagem FROM produtos ' +
-  'WHERE ativo = 1 AND imagem IS NOT NULL ' +
-  'ORDER BY categoria, nome, codigo'
-).all();
+titulo('Lendo produtos');
+const produtos = dadosCatalogo.produtos.map(p => ({
+  codigo: p.codigo,
+  nome: p.nome,
+  categoria: p.categoria,
+  preco: p.preco,
+  qtde_caixa: p.qtdeCaixa,
+  ean: p.ean,
+  imagem: p.imagem,
+}));
 ok('Produtos para o PDF: ' + produtos.length);
 
 titulo('Pre-convertendo imagens WebP para JPEG');
@@ -205,8 +212,7 @@ const tPrep = Date.now();
 const produtosComImg = [];
 for (let i = 0; i < produtos.length; i++) {
   const p = produtos[i];
-  const caminhoImg = path.join(ROOT, 'public', p.imagem);
-  const imgBuffer = await carregarImagemComoJpeg(caminhoImg);
+  const imgBuffer = p.imagem ? await carregarImagemComoJpeg(path.join(ROOT, 'public', p.imagem)) : null;
   produtosComImg.push({ produto: p, imagem: imgBuffer });
 
   if ((i + 1) % 100 === 0) {
@@ -251,4 +257,3 @@ console.log('');
 console.log('  Proximo passo: subir pro GitHub');
 console.log('');
 
-db.close();

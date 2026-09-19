@@ -47,7 +47,9 @@ if (!fs.existsSync(pastaXlsx)) {
   process.exit(1);
 }
 const arquivos = fs.readdirSync(pastaXlsx);
-const nomeXlsx = arquivos.find(a => config.xlsx.padraoNome.test(a));
+const nomeXlsx = arquivos
+  .filter(a => config.xlsx.padraoNome.test(a) && !a.startsWith('~$'))
+  .sort((a, b) => fs.statSync(path.join(pastaXlsx, b)).mtimeMs - fs.statSync(path.join(pastaXlsx, a)).mtimeMs)[0];
 if (!nomeXlsx) {
   erro('Nenhum XLSX casando com o padrao em ' + config.xlsx.pasta);
   process.exit(1);

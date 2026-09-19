@@ -10,7 +10,8 @@
     "casar": "node scripts/02-casar-imagens.js",
     "otimizar": "node scripts/03-otimizar-imagens.js",
     "json": "node scripts/04-gerar-json.js",
-    "pdf": "node scripts/05-gerar-pdfs.js"
+    "pdf": "node scripts/05-gerar-pdfs.js",
+    "sem-foto": "node scripts/sem-foto.js"
   },
   "dependencies": {
     "astro": "^7.3.3",
@@ -19,5 +20,7 @@
     "sharp": "^0.34.0",
     "xlsx": "^0.18.5"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }

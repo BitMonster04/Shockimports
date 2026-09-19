@@ -4,7 +4,8 @@ import dados from '../../public/dados/produtos.json';
 const produtos = dados.produtos;
 const categorias = dados.categorias;
 const base = import.meta.env.BASE_URL;
-const dadosJson = JSON.stringify({ produtos, base });
+// escapa '<' para que um nome de produto nunca feche a tag <script>
+const dadosJson = JSON.stringify({ produtos, base }).replace(/</g, '\\u003c');
 ---
 
 <Base titulo="Catálogo Shock Imports">
@@ -35,7 +36,7 @@ const dadosJson = JSON.stringify({ produtos, base });
   </main>
 
   <footer class="rodape">
-    Shock Imports Comercial Ltda — Catálogo gerado em {new Date(dados.geradoEm).toLocaleDateString('pt-BR')}
+    Shock Imports Comercial Ltda — Atualizado em {new Date(dados.geradoEm).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })}
   </footer>
 
   <script type="application/json" id="dados-catalogo" set:html={dadosJson} />
@@ -55,6 +56,8 @@ const dadosJson = JSON.stringify({ produtos, base });
     let termoBusca = '';
 
     const fmtPreco = (v) => v === null || v === undefined ? '—' : 'R$ ' + v.toFixed(2).replace('.', ',');
+
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
     function slugCategoria(cat) {
       return cat
@@ -82,15 +85,18 @@ const dadosJson = JSON.stringify({ produtos, base });
       });
 
       grid.innerHTML = filtrados.map(p => {
+        const foto = p.imagem
+          ? `<img src="${baseLimpa}/${esc(p.imagem)}" alt="${esc(p.nome)}" loading="lazy" />`
+          : `<span class="sem-foto-texto">Foto em breve</span>`;
         const qtde = p.qtdeCaixa ? `<div class="card-qtde">${p.qtdeCaixa} un/cx</div>` : '';
         return `
         <div class="card">
           <div class="card-img">
-            <img src="${baseLimpa}/${p.imagem}" alt="${p.nome}" loading="lazy" />
+            ${foto}
           </div>
           <div class="card-info">
-            <div class="card-codigo">${p.codigo}</div>
-            <div class="card-nome">${p.nome}</div>
+            <div class="card-codigo">${esc(p.codigo)}</div>
+            <div class="card-nome">${esc(p.nome)}</div>
             <div class="card-preco">${fmtPreco(p.preco)}</div>
             ${qtde}
           </div>
