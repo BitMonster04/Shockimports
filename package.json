@@ -1,0 +1,23 @@
+{
+  "name": "shock-catalogo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "atualizar": "node scripts/atualizar-tudo.js",
+    "verificar": "node scripts/00-verificar-ambiente.js",
+    "importar": "node scripts/01-importar-xlsx.js",
+    "casar": "node scripts/02-casar-imagens.js",
+    "otimizar": "node scripts/03-otimizar-imagens.js",
+    "json": "node scripts/04-gerar-json.js",
+    "pdf": "node scripts/05-gerar-pdfs.js"
+  },
+  "dependencies": {
+    "astro": "^7.3.3",
+    "better-sqlite3": "^13.0.3",
+    "pdfkit": "^0.15.0",
+    "sharp": "^0.34.0",
+    "xlsx": "^0.18.5"
+  },
+  "engines": { "node": ">=22" }
+}

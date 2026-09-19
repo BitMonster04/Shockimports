@@ -1,0 +1,17 @@
+---
+const { titulo = 'Catálogo Shock Imports' } = Astro.props;
+import '../styles/global.css';
+---
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{titulo}</title>
+  <meta name="description" content="Catálogo online da Shock Imports" />
+</head>
+<body>
+  <slot />
+</body>
+</html>

@@ -1,0 +1,129 @@
+---
+import Base from '../layouts/Base.astro';
+import dados from '../../public/dados/produtos.json';
+const produtos = dados.produtos;
+const categorias = dados.categorias;
+const base = import.meta.env.BASE_URL;
+const dadosJson = JSON.stringify({ produtos, base });
+---
+
+<Base titulo="Catálogo Shock Imports">
+  <header>
+    <div class="header-inner">
+      <div class="logo">SH<span class="imports">OCK</span> <span class="imports">IMPORTS</span></div>
+      <input type="text" class="busca" id="busca" placeholder="Buscar produto ou código..." />
+      <button class="botao-pdf" id="botao-pdf" title="Baixar catálogo em PDF">
+        PDF
+      </button>
+    </div>
+  </header>
+
+  <div class="chips" id="chips">
+    <button class="chip ativo" data-categoria="todas">Todas ({produtos.length})</button>
+    {categorias.map(cat => {
+      const n = produtos.filter(p => p.categoria === cat).length;
+      return <button class="chip" data-categoria={cat}>{cat} ({n})</button>;
+    })}
+  </div>
+
+  <main>
+    <div class="grid" id="grid"></div>
+    <div class="sem-resultado" id="vazio" style="display:none">
+      <strong>Nada encontrado</strong>
+      Tente outro termo ou outra categoria.
+    </div>
+  </main>
+
+  <footer class="rodape">
+    Shock Imports Comercial Ltda — Catálogo gerado em {new Date(dados.geradoEm).toLocaleDateString('pt-BR')}
+  </footer>
+
+  <script type="application/json" id="dados-catalogo" set:html={dadosJson} />
+
+  <script>
+    const el = document.getElementById('dados-catalogo');
+    const { produtos, base } = JSON.parse(el.textContent);
+    const baseLimpa = base.replace(/\/$/, '');
+
+    const grid = document.getElementById('grid');
+    const vazio = document.getElementById('vazio');
+    const busca = document.getElementById('busca');
+    const chips = document.getElementById('chips');
+    const botaoPdf = document.getElementById('botao-pdf');
+
+    let categoriaAtual = 'todas';
+    let termoBusca = '';
+
+    const fmtPreco = (v) => v === null || v === undefined ? '—' : 'R$ ' + v.toFixed(2).replace('.', ',');
+
+    function slugCategoria(cat) {
+      return cat
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+    }
+
+    function urlPdfAtual() {
+      if (categoriaAtual === 'todas') {
+        return baseLimpa + '/pdf/catalogo-completo.pdf';
+      }
+      return baseLimpa + '/pdf/catalogo-' + slugCategoria(categoriaAtual) + '.pdf';
+    }
+
+    function render() {
+      const filtrados = produtos.filter(p => {
+        if (categoriaAtual !== 'todas' && p.categoria !== categoriaAtual) return false;
+        if (termoBusca) {
+          const t = termoBusca.toLowerCase();
+          if (!p.nome.toLowerCase().includes(t) && !p.codigo.toLowerCase().includes(t)) return false;
+        }
+        return true;
+      });
+
+      grid.innerHTML = filtrados.map(p => {
+        const qtde = p.qtdeCaixa ? `<div class="card-qtde">${p.qtdeCaixa} un/cx</div>` : '';
+        return `
+        <div class="card">
+          <div class="card-img">
+            <img src="${baseLimpa}/${p.imagem}" alt="${p.nome}" loading="lazy" />
+          </div>
+          <div class="card-info">
+            <div class="card-codigo">${p.codigo}</div>
+            <div class="card-nome">${p.nome}</div>
+            <div class="card-preco">${fmtPreco(p.preco)}</div>
+            ${qtde}
+          </div>
+        </div>
+      `;
+      }).join('');
+
+      vazio.style.display = filtrados.length === 0 ? 'block' : 'none';
+    }
+
+    busca.addEventListener('input', (e) => {
+      termoBusca = e.target.value.trim();
+      render();
+    });
+
+    chips.addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (!btn) return;
+      chips.querySelectorAll('.chip').forEach(c => c.classList.remove('ativo'));
+      btn.classList.add('ativo');
+      categoriaAtual = btn.dataset.categoria;
+      botaoPdf.title = categoriaAtual === 'todas'
+        ? 'Baixar catálogo completo em PDF'
+        : 'Baixar PDF da categoria: ' + categoriaAtual;
+      render();
+    });
+
+    botaoPdf.addEventListener('click', () => {
+      const url = urlPdfAtual();
+      window.open(url, '_blank');
+    });
+
+    render();
+  </script>
+</Base>
+

@@ -1,0 +1,11 @@
+node_modules/
+.astro/
+dist/
+banco/
+logs/
+relatorios/
+dados/
+public/img/produtos/*.hash
+.env
+.DS_Store
+*.log
