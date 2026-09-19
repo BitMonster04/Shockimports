@@ -65,8 +65,13 @@ header {
   border-color: var(--laranja);
 }
 
+.acoes-pdf {
+  display: flex;
+  gap: 8px;
+}
+
 .botao-pdf {
-  padding: 10px 18px;
+  padding: 10px 16px;
   background: var(--laranja);
   color: var(--branco);
   border: none;
@@ -75,12 +80,23 @@ header {
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.2s;
-  letter-spacing: 0.5px;
+  transition: all 0.2s;
+  letter-spacing: 0.3px;
 }
 
 .botao-pdf:hover {
   background: var(--laranja-escuro);
+}
+
+.botao-secundario {
+  background: var(--branco);
+  color: var(--laranja);
+  border: 2px solid var(--laranja);
+}
+
+.botao-secundario:hover {
+  background: var(--laranja);
+  color: var(--branco);
 }
 
 .chips {
@@ -238,12 +254,10 @@ main {
   .card-preco { font-size: 17px; }
   .card-nome { font-size: 13px; }
   .logo { font-size: 20px; }
-  .botao-pdf { padding: 10px 14px; font-size: 13px; }
-}
-
-.sem-foto-texto {
-  color: #8C8D91;
-  font-size: 0.8rem;
-  text-align: center;
-  padding: 8px;
+  .acoes-pdf { width: 100%; }
+  .botao-pdf {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
 }
