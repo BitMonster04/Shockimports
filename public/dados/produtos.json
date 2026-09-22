@@ -1,6 +1,6 @@
 {
-  "geradoEm": "2026-09-19T11:01:54.223Z",
-  "total": 926,
+  "geradoEm": "2026-09-22T17:09:13.227Z",
+  "total": 928,
   "categorias": [
     "BRINQUEDOS",
     "ELETRÔNICOS",
@@ -382,6 +382,16 @@
       "qtdeCaixa": null,
       "ean": "7899605713766",
       "imagem": "img/produtos/ASH-15.5045.webp"
+    },
+    {
+      "id": 2540355,
+      "codigo": "ASH-15.6332",
+      "nome": "BONECA BIA 28,5X6X3CM",
+      "categoria": "BRINQUEDOS",
+      "preco": 2.5,
+      "qtdeCaixa": 120,
+      "ean": "7899605725769",
+      "imagem": "img/produtos/ASH-15.6332.webp"
     },
     {
       "id": 2540570,
@@ -2902,6 +2912,16 @@
       "qtdeCaixa": null,
       "ean": "7899605799623",
       "imagem": "img/produtos/ASH-15.6385.webp"
+    },
+    {
+      "id": 2540641,
+      "codigo": "ASH-15.6420",
+      "nome": "PISTOLA DE AGUA 30X17 CM",
+      "categoria": "BRINQUEDOS",
+      "preco": 11,
+      "qtdeCaixa": 120,
+      "ean": "7899605718945",
+      "imagem": "img/produtos/ASH-15.6420.webp"
     },
     {
       "id": 3904046,
