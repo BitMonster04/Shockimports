@@ -43,6 +43,11 @@ const dadosJson = JSON.stringify({ produtos, base });
     Shock Imports Comercial Ltda — Catálogo gerado em {new Date(dados.geradoEm).toLocaleDateString('pt-BR')}
   </footer>
 
+  <div class="lightbox" id="lightbox" aria-hidden="true">
+    <button class="lightbox-fechar" id="lightbox-fechar" aria-label="Fechar">×</button>
+    <img class="lightbox-img" id="lightbox-img" src="" alt="" />
+  </div>
+
   <script type="application/json" id="dados-catalogo" set:html={dadosJson} />
 
   <script>
@@ -56,6 +61,9 @@ const dadosJson = JSON.stringify({ produtos, base });
     const chips = document.getElementById('chips');
     const botaoBaixar = document.getElementById('botao-baixar');
     const botaoCompartilhar = document.getElementById('botao-compartilhar');
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImg = document.getElementById('lightbox-img');
+    const lightboxFechar = document.getElementById('lightbox-fechar');
 
     let categoriaAtual = 'todas';
     let termoBusca = '';
@@ -84,6 +92,12 @@ const dadosJson = JSON.stringify({ produtos, base });
       return 'Catalogo-Shock-Imports-' + categoriaAtual.replace(/\s+/g, '-') + '.pdf';
     }
 
+    function escaparHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
     function render() {
       const filtrados = produtos.filter(p => {
         if (categoriaAtual !== 'todas' && p.categoria !== categoriaAtual) return false;
@@ -96,14 +110,21 @@ const dadosJson = JSON.stringify({ produtos, base });
 
       grid.innerHTML = filtrados.map(p => {
         const qtde = p.qtdeCaixa ? `<div class="card-qtde">${p.qtdeCaixa} un/cx</div>` : '';
+        const nomeEsc = escaparHtml(p.nome);
+        const codigoEsc = escaparHtml(p.codigo);
         return `
         <div class="card">
-          <div class="card-img">
-            <img src="${baseLimpa}/${p.imagem}" alt="${p.nome}" loading="lazy" />
+          <div class="card-img" data-acao="zoom" data-src="${baseLimpa}/${p.imagem}" data-alt="${nomeEsc}">
+            <img src="${baseLimpa}/${p.imagem}" alt="${nomeEsc}" loading="lazy" />
           </div>
           <div class="card-info">
-            <div class="card-codigo">${p.codigo}</div>
-            <div class="card-nome">${p.nome}</div>
+            <div class="card-codigo-linha">
+              <span class="card-codigo">${codigoEsc}</span>
+              <button class="botao-copiar" data-acao="copiar" data-codigo="${codigoEsc}" title="Copiar código" aria-label="Copiar código ${codigoEsc}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
+            <div class="card-nome">${nomeEsc}</div>
             <div class="card-preco">${fmtPreco(p.preco)}</div>
             ${qtde}
           </div>
@@ -128,6 +149,61 @@ const dadosJson = JSON.stringify({ produtos, base });
       render();
     });
 
+    // ---------- Clique nos cards: zoom ou copiar ----------
+    grid.addEventListener('click', async (e) => {
+      const alvo = e.target.closest('[data-acao]');
+      if (!alvo) return;
+
+      if (alvo.dataset.acao === 'zoom') {
+        abrirLightbox(alvo.dataset.src, alvo.dataset.alt);
+      } else if (alvo.dataset.acao === 'copiar') {
+        const codigo = alvo.dataset.codigo;
+        try {
+          await navigator.clipboard.writeText(codigo);
+        } catch {
+          const ta = document.createElement('textarea');
+          ta.value = codigo;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.select();
+          try { document.execCommand('copy'); } catch {}
+          document.body.removeChild(ta);
+        }
+        alvo.classList.add('copiado');
+        const original = alvo.innerHTML;
+        alvo.innerHTML = 'Copiado!';
+        setTimeout(() => {
+          alvo.classList.remove('copiado');
+          alvo.innerHTML = original;
+        }, 1500);
+      }
+    });
+
+    // ---------- Lightbox ----------
+    function abrirLightbox(src, alt) {
+      lightboxImg.src = src;
+      lightboxImg.alt = alt || '';
+      lightbox.classList.add('aberto');
+      lightbox.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function fecharLightbox() {
+      lightbox.classList.remove('aberto');
+      lightbox.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      setTimeout(() => { lightboxImg.src = ''; }, 200);
+    }
+
+    lightboxFechar.addEventListener('click', fecharLightbox);
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) fecharLightbox();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && lightbox.classList.contains('aberto')) fecharLightbox();
+    });
+
     // ---------- Baixar PDF ----------
     botaoBaixar.addEventListener('click', () => {
       const url = urlPdfAtual();
@@ -143,12 +219,8 @@ const dadosJson = JSON.stringify({ produtos, base });
 
     // ---------- Compartilhar ----------
     botaoCompartilhar.addEventListener('click', async () => {
-      const url = urlPdfAtual();
-      const nome = nomePdfAtual();
-
       if (navigator.share) {
         try {
-          // Tenta compartilhar o link do site (mais leve que o PDF)
           await navigator.share({
             title: 'Catálogo Shock Imports',
             text: categoriaAtual === 'todas'
@@ -156,11 +228,8 @@ const dadosJson = JSON.stringify({ produtos, base });
               : 'Confira o catálogo de ' + categoriaAtual + ' da Shock Imports',
             url: window.location.href,
           });
-        } catch (e) {
-          // Usuário cancelou ou deu erro — não faz nada
-        }
+        } catch (e) {}
       } else {
-        // Fallback: copia o link
         try {
           await navigator.clipboard.writeText(window.location.href);
           botaoCompartilhar.textContent = 'Link copiado!';

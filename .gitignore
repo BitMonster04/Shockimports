@@ -12,3 +12,4 @@ public/pdf/
 .DS_Store
 *.log
 config.local.json
+*.bak
